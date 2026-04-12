@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 const http = require('http');
+const net = require('net');
 const path = require('path');
 const fs = require('fs');
 const url = require('url');
+const { WebSocketServer } = require('ws');
 
 const PORT = parseInt(process.env.PORT || '5050', 10);
 const RPC_HOST = process.env.BITCOIN_RPC_HOST || 'localhost';
@@ -11,6 +13,8 @@ const RPC_USER = process.env.BITCOIN_RPC_USER || 'admin1';
 const RPC_PASS = process.env.BITCOIN_RPC_PASS || '123';
 const ESPLORA_HOST = process.env.ESPLORA_HOST || 'localhost';
 const ESPLORA_PORT = parseInt(process.env.ESPLORA_PORT || '3000', 10);
+const ELECTRUM_HOST = process.env.ELECTRUM_HOST || 'localhost';
+const ELECTRUM_PORT = parseInt(process.env.ELECTRUM_PORT || '50000', 10);
 
 function rpc(method, params = [], wallet = undefined) {
   return new Promise((resolve, reject) => {
@@ -178,6 +182,34 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+// Electrum WebSocket bridge — ws://host:5050/electrum
+const wss = new WebSocketServer({ server, path: '/electrum' });
+
+wss.on('connection', (ws) => {
+  const tcp = net.createConnection(ELECTRUM_PORT, ELECTRUM_HOST);
+  let buf = '';
+
+  tcp.on('data', (chunk) => {
+    buf += chunk.toString();
+    const lines = buf.split('\n');
+    buf = lines.pop(); // hold onto any incomplete trailing line
+    for (const line of lines) {
+      if (line.trim()) ws.send(line);
+    }
+  });
+
+  tcp.on('error', (e) => {
+    ws.send(JSON.stringify({ error: e.message }));
+    ws.close();
+  });
+
+  tcp.on('close', () => ws.close());
+
+  ws.on('message', (msg) => tcp.write(msg + '\n'));
+  ws.on('close', () => tcp.destroy());
+});
+
 server.listen(PORT, () => {
   console.log(`Nigiri UI running at http://localhost:${PORT}`);
+  console.log(`Electrum WS bridge at ws://localhost:${PORT}/electrum`);
 });

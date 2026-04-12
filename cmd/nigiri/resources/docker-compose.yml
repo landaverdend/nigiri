@@ -345,6 +345,8 @@ services:
       BITCOIN_RPC_PASS: "123"
       ESPLORA_HOST: chopsticks
       ESPLORA_PORT: "3000"
+      ELECTRUM_HOST: electrs
+      ELECTRUM_PORT: "50000"
     ports:
       - "5050:5050"
     restart: unless-stopped

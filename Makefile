@@ -15,6 +15,11 @@ build:
 	chmod u+x ./scripts/build
 	./scripts/build
 
+## dev-install: build and install locally, syncing all resources to the datadir
+dev-install:
+	chmod u+x ./scripts/dev-install
+	./scripts/dev-install
+
 ## release: build and upload binaries to Github Releases
 release:
 	goreleaser
