@@ -52,6 +52,10 @@ var arkFlag = cli.BoolFlag{
 //go:embed resources/bitcoin.conf
 //go:embed resources/elements.conf
 //go:embed resources/lnd.conf
+//go:embed resources/ui/Dockerfile
+//go:embed resources/ui/server.js
+//go:embed resources/ui/index.html
+//go:embed resources/ui/package.json
 var f embed.FS
 
 func main() {
@@ -197,6 +201,22 @@ func provisionResourcesToDatadir(datadir string) error {
 		gid,
 	); err != nil {
 		return err
+	}
+
+	// copy ui/ build context so docker compose can build the nigiri-ui image
+	uiDir := filepath.Join(datadir, "ui")
+	if err := makeDirectoryIfNotExists(uiDir, uid, gid); err != nil {
+		return err
+	}
+	for _, uiFile := range []string{"Dockerfile", "server.js", "index.html", "package.json"} {
+		if err := copyFromResourcesToDatadir(
+			filepath.Join("resources", "ui", uiFile),
+			filepath.Join(uiDir, uiFile),
+			uid,
+			gid,
+		); err != nil {
+			return err
+		}
 	}
 
 	if err := nigiriState.Set(map[string]string{"ready": strconv.FormatBool(true)}); err != nil {

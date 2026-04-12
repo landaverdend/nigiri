@@ -332,6 +332,23 @@ services:
     ports:
       - "7070:7070"
 
+  # Nigiri UI — local dev dashboard
+  ui:
+    build: ./ui
+    container_name: nigiri-ui
+    depends_on:
+      - chopsticks
+    environment:
+      BITCOIN_RPC_HOST: bitcoin
+      BITCOIN_RPC_PORT: "18443"
+      BITCOIN_RPC_USER: admin1
+      BITCOIN_RPC_PASS: "123"
+      ESPLORA_HOST: chopsticks
+      ESPLORA_PORT: "3000"
+    ports:
+      - "5050:5050"
+    restart: unless-stopped
+
 networks:
   default:
     name: nigiri

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nigiri</title>
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --border: #2a2a2a;
+    --accent: #f7931a;
+    --accent-dim: #c0700e;
+    --text: #e8e8e8;
+    --muted: #888;
+    --success: #22c55e;
+    --error: #ef4444;
+    --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 14px; min-height: 100vh; }
+  header { border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 18px; color: var(--accent); }
+  .badge { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 12px; color: var(--muted); }
+  .badge span { color: var(--text); }
+  main { max-width: 960px; margin: 0 auto; padding: 24px; display: grid; gap: 20px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .stat label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .stat .value { font-size: 22px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .stat .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .card h2 { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  input, select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 8px 10px; font-family: inherit; font-size: 13px; outline: none; margin-bottom: 10px; }
+  input:focus, select:focus { border-color: var(--accent); }
+  button { background: var(--accent); color: #000; border: none; border-radius: 4px; padding: 8px 16px; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%; }
+  button:hover { background: var(--accent-dim); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.secondary { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  button.secondary:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
+  .result { margin-top: 12px; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; font-size: 12px; word-break: break-all; display: none; }
+  .result.show { display: block; }
+  .result.success { border-color: var(--success); color: var(--success); }
+  .result.error { border-color: var(--error); color: var(--error); }
+  .copy-wrap { position: relative; }
+  .copy-btn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); background: var(--border); color: var(--muted); border: none; border-radius: 3px; padding: 2px 6px; font-size: 10px; cursor: pointer; width: auto; }
+  .copy-btn:hover { background: var(--accent); color: #000; }
+  .wallet-list { display: flex; flex-direction: column; gap: 8px; }
+  .wallet-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px 4px 0 0; border-bottom: none; }
+  .wallet-item:only-child, .wallet-item.no-drawer { border-radius: 4px; border-bottom: 1px solid var(--border); }
+  .wallet-item .name { font-weight: 600; }
+  .wallet-item .bal { color: var(--accent); font-size: 12px; }
+  .wallet-actions { display: flex; gap: 6px; }
+  .wallet-actions button { width: auto; padding: 4px 10px; font-size: 11px; }
+  .wallet-block { margin-bottom: 8px; }
+  .wallet-drawer { display: none; background: var(--bg); border: 1px solid var(--border); border-top: 1px solid var(--border); border-radius: 0 0 4px 4px; padding: 0; overflow: hidden; }
+  .wallet-drawer.open { display: block; }
+  .addr-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid var(--border); font-size: 12px; gap: 8px; }
+  .addr-row:last-child { border-bottom: none; }
+  .addr-row .addr-str { color: var(--text); font-family: inherit; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .addr-row .addr-bal { color: var(--accent); white-space: nowrap; flex-shrink: 0; }
+  .addr-row .addr-copy { background: var(--border); color: var(--muted); border: none; border-radius: 3px; padding: 2px 6px; font-size: 10px; cursor: pointer; flex-shrink: 0; }
+  .addr-row .addr-copy:hover { background: var(--accent); color: #000; }
+  .drawer-empty { padding: 10px 12px; color: var(--muted); font-size: 12px; }
+  .drawer-loading { padding: 10px 12px; color: var(--muted); font-size: 12px; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  .addr-detail { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .addr-detail .row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .addr-detail .row:last-child { border: none; }
+  .addr-detail .v { color: var(--text); }
+  textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); padding: 8px 10px; font-family: inherit; font-size: 12px; outline: none; margin-bottom: 10px; resize: vertical; }
+  textarea:focus { border-color: var(--accent); }
+  .tabs { display: flex; gap: 2px; margin-bottom: 16px; }
+  .tab { flex: 1; padding: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; text-align: center; font-size: 12px; color: var(--muted); }
+  .tab.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .inline-row { display: flex; gap: 8px; }
+  .inline-row input { flex: 1; margin-bottom: 0; }
+  .inline-row button { width: auto; white-space: nowrap; }
+  .log { font-size: 11px; color: var(--muted); margin-top: 8px; max-height: 120px; overflow-y: auto; }
+  .log .entry { padding: 2px 0; border-bottom: 1px solid var(--border); }
+  .log .entry.ok { color: var(--success); }
+  .log .entry.fail { color: var(--error); }
+</style>
+</head>
+<body>
+<header>
+  <h1>nigiri</h1>
+  <div class="badge">regtest &nbsp;|&nbsp; block <span id="hdr-height">…</span></div>
+  <div class="badge">mempool <span id="hdr-mempool">…</span> txs</div>
+  <div style="margin-left:auto">
+    <button class="secondary" style="width:auto;padding:4px 12px;font-size:12px" onclick="refresh()">↻ refresh</button>
+  </div>
+</header>
+
+<main>
+  <!-- Stats row -->
+  <div class="stats">
+    <div class="stat">
+      <label>Block Height</label>
+      <div class="value" id="stat-height">–</div>
+    </div>
+    <div class="stat">
+      <label>Mempool</label>
+      <div class="value" id="stat-mempool">–</div>
+      <div class="sub" id="stat-mempool-size"></div>
+    </div>
+    <div class="stat">
+      <label>Wallets</label>
+      <div class="value" id="stat-wallets">–</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <!-- Faucet -->
+    <div class="card">
+      <h2>Faucet</h2>
+      <label>Recipient Address</label>
+      <input id="faucet-addr" type="text" placeholder="bcrt1q…">
+      <label>Amount (BTC)</label>
+      <input id="faucet-amount" type="number" value="1" min="0.00001" step="0.1">
+      <button onclick="faucet()">Send from Faucet</button>
+      <div class="result" id="faucet-result"></div>
+    </div>
+
+    <!-- Mine Blocks -->
+    <div class="card">
+      <h2>Mine Blocks</h2>
+      <label>Number of Blocks</label>
+      <input id="mine-blocks" type="number" value="1" min="1" max="1000">
+      <label>Reward To (wallet or address)</label>
+      <div class="inline-row" style="margin-bottom:10px">
+        <select id="mine-wallet" style="margin-bottom:0; flex:1">
+          <option value="">default wallet</option>
+        </select>
+      </div>
+      <button onclick="mine()">Mine</button>
+      <div class="result" id="mine-result"></div>
+    </div>
+  </div>
+
+  <!-- Address Tools -->
+  <div class="card">
+    <h2>Addresses</h2>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('addr','gen')">Generate</div>
+      <div class="tab" onclick="switchTab('addr','lookup')">Lookup</div>
+    </div>
+
+    <div class="tab-content active" id="addr-gen">
+      <label>Wallet</label>
+      <select id="genaddr-wallet">
+        <option value="">default wallet</option>
+      </select>
+      <label>Label (optional)</label>
+      <input id="genaddr-label" type="text" placeholder="e.g. my-address">
+      <button onclick="generateAddress()">Generate Address</button>
+      <div class="result" id="genaddr-result"></div>
+    </div>
+
+    <div class="tab-content" id="addr-lookup">
+      <label>Address</label>
+      <input id="lookup-addr" type="text" placeholder="bcrt1q…">
+      <button onclick="lookupAddress()">Lookup</button>
+      <div id="addr-detail"></div>
+    </div>
+  </div>
+
+  <!-- Wallets -->
+  <div class="card">
+    <h2>Wallets</h2>
+    <div id="wallet-list" class="wallet-list">
+      <div style="color:var(--muted);font-size:12px">Loading…</div>
+    </div>
+    <hr class="divider">
+    <label>Create New Wallet</label>
+    <div class="inline-row">
+      <input id="new-wallet-name" type="text" placeholder="wallet name">
+      <button onclick="createWallet()" style="width:auto;white-space:nowrap">Create</button>
+    </div>
+    <div class="result" id="wallet-result"></div>
+  </div>
+
+  <!-- Broadcast -->
+  <div class="card">
+    <h2>Broadcast Raw Transaction</h2>
+    <label>Raw TX Hex</label>
+    <textarea id="broadcast-hex" rows="4" placeholder="0200000001…"></textarea>
+    <button onclick="broadcast()">Broadcast</button>
+    <div class="result" id="broadcast-result"></div>
+  </div>
+</main>
+
+<script>
+const API = '';
+
+async function api(path, opts = {}) {
+  const r = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  return r.json();
+}
+
+function post(path, body) {
+  return api(path, { method: 'POST', body: JSON.stringify(body) });
+}
+
+function showResult(id, data, isError = false) {
+  const el = document.getElementById(id);
+  el.className = 'result show ' + (isError ? 'error' : 'success');
+  el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+}
+
+function btcFmt(sats) { return (sats / 1e8).toFixed(8) + ' BTC'; }
+
+async function refresh() {
+  const info = await api('/api/info');
+  if (info.error) return;
+  document.getElementById('stat-height').textContent = info.height;
+  document.getElementById('hdr-height').textContent = info.height;
+  document.getElementById('stat-mempool').textContent = info.mempool.count;
+  document.getElementById('hdr-mempool').textContent = info.mempool.count;
+  document.getElementById('stat-mempool-size').textContent = info.mempool.vsize ? info.mempool.vsize + ' vbytes' : '';
+  document.getElementById('stat-wallets').textContent = info.wallets.length;
+  populateWalletSelects(info.wallets);
+}
+
+function populateWalletSelects(wallets) {
+  ['mine-wallet', 'genaddr-wallet'].forEach(id => {
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    sel.innerHTML = wallets.map(w =>
+      `<option value="${w}">${w === '' ? 'default wallet' : w}</option>`
+    ).join('');
+    sel.value = cur;
+  });
+}
+
+
+async function loadWalletsProper() {
+  const { wallets } = await api('/api/wallets');
+  const list = document.getElementById('wallet-list');
+  list.innerHTML = '';
+  for (const w of wallets) {
+    let bal = '?';
+    try {
+      const key = w === '' ? 'default' : encodeURIComponent(w);
+      const r = await api(`/api/wallet/${key}/balance`);
+      if (r.balance !== undefined) bal = r.balance;
+    } catch {}
+    const safeW = w.replace(/'/g, "\\'");
+    const block = document.createElement('div');
+    block.className = 'wallet-block';
+    block.id = `wblock-${w || 'default'}`;
+    block.innerHTML = `
+      <div class="wallet-item">
+        <div>
+          <div class="name">${w === '' ? '<em style="color:var(--muted)">default</em>' : w}</div>
+        </div>
+        <div class="bal">${bal} BTC</div>
+        <div class="wallet-actions">
+          <button class="secondary" onclick="toggleAddresses('${safeW}')">addresses ▾</button>
+          <button class="secondary" onclick="copyWalletAddr('${safeW}')">new addr</button>
+        </div>
+      </div>
+      <div class="wallet-drawer" id="wdrawer-${w || 'default'}">
+        <div class="drawer-loading">Loading…</div>
+      </div>
+    `;
+    list.appendChild(block);
+  }
+}
+
+async function toggleAddresses(wallet) {
+  const key = wallet === '' ? 'default' : wallet;
+  const drawer = document.getElementById(`wdrawer-${key}`);
+  if (!drawer) return;
+  const isOpen = drawer.classList.contains('open');
+  if (isOpen) { drawer.classList.remove('open'); return; }
+  drawer.classList.add('open');
+  // Only fetch if not already loaded
+  if (drawer.dataset.loaded) return;
+  drawer.dataset.loaded = '1';
+  const urlKey = wallet === '' ? 'default' : encodeURIComponent(wallet);
+  const r = await api(`/api/wallet/${urlKey}/addresses`);
+  if (r.error) { drawer.innerHTML = `<div class="drawer-empty">${r.error}</div>`; return; }
+  const addrs = r.addresses;
+  if (!addrs || addrs.length === 0) { drawer.innerHTML = '<div class="drawer-empty">No addresses yet</div>'; return; }
+  drawer.innerHTML = addrs.map(a => {
+    const bal = (((a.amount) || 0)).toFixed(8);
+    const addrStr = a.address || '';
+    return `<div class="addr-row">
+      <span class="addr-str" title="${addrStr}">${addrStr}</span>
+      <span class="addr-bal">${bal} BTC</span>
+      <button class="addr-copy" onclick="navigator.clipboard.writeText('${addrStr}').then(()=>{ this.textContent='copied!'; setTimeout(()=>this.textContent='copy',1200) })">copy</button>
+    </div>`;
+  }).join('');
+}
+
+async function copyWalletAddr(wallet) {
+  const r = await post('/api/address', { wallet });
+  if (r.error) { alert('Error: ' + r.error); return; }
+  await navigator.clipboard.writeText(r.address).catch(() => {});
+  alert(`New address (copied):\n${r.address}`);
+  // Invalidate drawer so it reloads next time it's opened
+  const key = wallet === '' ? 'default' : wallet;
+  const drawer = document.getElementById(`wdrawer-${key}`);
+  if (drawer) { delete drawer.dataset.loaded; drawer.innerHTML = '<div class="drawer-loading">Loading…</div>'; }
+}
+
+async function faucet() {
+  const address = document.getElementById('faucet-addr').value.trim();
+  const amount = parseFloat(document.getElementById('faucet-amount').value);
+  if (!address) { showResult('faucet-result', 'Enter an address', true); return; }
+  const r = await post('/api/faucet', { address, amount });
+  showResult('faucet-result', r.error ? r.error : `txid: ${r.txid}`, !!r.error);
+  if (!r.error) refresh();
+}
+
+async function mine() {
+  const blocks = parseInt(document.getElementById('mine-blocks').value);
+  const wallet = document.getElementById('mine-wallet').value;
+  const r = await post('/api/mine', { blocks, wallet });
+  showResult('mine-result', r.error ? r.error : `Mined ${r.blocks} block(s)`, !!r.error);
+  if (!r.error) refresh();
+}
+
+async function generateAddress() {
+  const wallet = document.getElementById('genaddr-wallet').value;
+  const label = document.getElementById('genaddr-label').value.trim();
+  const r = await post('/api/address', { wallet, label });
+  if (r.error) { showResult('genaddr-result', r.error, true); return; }
+  const el = document.getElementById('genaddr-result');
+  el.className = 'result show success';
+  el.innerHTML = `<div style="word-break:break-all">${r.address}</div>
+    <button class="copy-btn" style="position:static;margin-top:6px;width:auto"
+      onclick="navigator.clipboard.writeText('${r.address}').then(()=>this.textContent='copied!').catch(()=>{})">copy</button>`;
+  document.getElementById('faucet-addr').value = r.address;
+}
+
+async function lookupAddress() {
+  const addr = document.getElementById('lookup-addr').value.trim();
+  if (!addr) return;
+  const r = await api(`/api/address/${addr}`);
+  const detail = document.getElementById('addr-detail');
+  if (r.error) {
+    detail.innerHTML = `<div class="result show error">${r.error}</div>`;
+    return;
+  }
+  const cs = r.chain_stats || {};
+  const ms = r.mempool_stats || {};
+  const funded = cs.funded_txo_sum + ms.funded_txo_sum;
+  const spent = cs.spent_txo_sum + ms.spent_txo_sum;
+  const bal = (funded - spent) / 1e8;
+  detail.innerHTML = `
+    <div class="addr-detail">
+      <div class="row"><span>Balance</span><span class="v" style="color:var(--accent)">${bal.toFixed(8)} BTC</span></div>
+      <div class="row"><span>Total received</span><span class="v">${(funded/1e8).toFixed(8)} BTC</span></div>
+      <div class="row"><span>Total spent</span><span class="v">${(spent/1e8).toFixed(8)} BTC</span></div>
+      <div class="row"><span>Confirmed txs</span><span class="v">${cs.tx_count ?? 0}</span></div>
+      <div class="row"><span>Unconfirmed txs</span><span class="v">${ms.tx_count ?? 0}</span></div>
+    </div>`;
+}
+
+async function createWallet() {
+  const name = document.getElementById('new-wallet-name').value.trim();
+  if (!name) { showResult('wallet-result', 'Enter a wallet name', true); return; }
+  const r = await post('/api/wallet', { name });
+  showResult('wallet-result', r.error ? r.error : `Wallet "${r.name || name}" created`, !!r.error);
+  if (!r.error) { refresh(); loadWalletsProper(); }
+}
+
+async function broadcast() {
+  const hex = document.getElementById('broadcast-hex').value.trim();
+  if (!hex) { showResult('broadcast-result', 'Enter raw tx hex', true); return; }
+  const r = await post('/api/broadcast', { hex });
+  showResult('broadcast-result', r.error ? r.error : `txid: ${r.txid}`, !!r.error);
+}
+
+function switchTab(group, tab) {
+  document.querySelectorAll(`.tab`).forEach(el => {
+    el.classList.toggle('active', el.getAttribute('onclick')?.includes(`'${group}','${tab}'`));
+  });
+  document.querySelectorAll(`[id^="${group}-"]`).forEach(el => {
+    el.classList.toggle('active', el.id === `${group}-${tab}`);
+  });
+}
+
+// Init
+(async () => {
+  await refresh();
+  await loadWalletsProper();
+})();
+</script>
+</body>
+</html>
