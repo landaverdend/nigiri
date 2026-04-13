@@ -37,6 +37,12 @@ cp "cmd/nigiri/resources/docker-compose.yml" "$DATADIR/docker-compose.yml"
 mkdir -p "$DATADIR/ui"
 cp -r cmd/nigiri/resources/ui/. "$DATADIR/ui/"
 
+if docker ps --format '{{.Names}}' | grep -q '^nigiri-ui$'; then
+  echo "Rebuilding nigiri-ui container..."
+  docker compose -f "$DATADIR/docker-compose.yml" build ui
+  docker compose -f "$DATADIR/docker-compose.yml" up -d ui
+fi
+
 popd > /dev/null
 
 echo "Done. $(nigiri version)"
