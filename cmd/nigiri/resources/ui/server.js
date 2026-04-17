@@ -185,29 +185,45 @@ const server = http.createServer(async (req, res) => {
 // Electrum WebSocket bridge — ws://host:5050/electrum
 const wss = new WebSocketServer({ server, path: '/electrum' });
 
-wss.on('connection', (ws) => {
+function connectToElectrum(ws, retriesLeft = 10, delay = 1000) {
   const tcp = net.createConnection(ELECTRUM_PORT, ELECTRUM_HOST);
   let buf = '';
+
+  const onMessage = (msg) => tcp.write(msg + '\n');
+  const onWsClose = () => tcp.destroy();
+  ws.on('message', onMessage);
+  ws.on('close', onWsClose);
 
   tcp.on('data', (chunk) => {
     buf += chunk.toString();
     const lines = buf.split('\n');
-    buf = lines.pop(); // hold onto any incomplete trailing line
+    buf = lines.pop();
     for (const line of lines) {
       if (line.trim()) ws.send(line);
     }
   });
 
   tcp.on('error', (e) => {
-    ws.send(JSON.stringify({ error: e.message }));
-    ws.close();
+    ws.off('message', onMessage);
+    ws.off('close', onWsClose);
+    if (e.code === 'ECONNREFUSED' && retriesLeft > 0) {
+      setTimeout(() => connectToElectrum(ws, retriesLeft - 1, Math.min(delay * 2, 10000)), delay);
+    } else {
+      if (ws.readyState === ws.OPEN) {
+        ws.send(JSON.stringify({ error: e.message }));
+        ws.close();
+      }
+    }
   });
 
-  tcp.on('close', () => ws.close());
+  tcp.on('close', () => {
+    ws.off('message', onMessage);
+    ws.off('close', onWsClose);
+    if (ws.readyState === ws.OPEN) ws.close();
+  });
+}
 
-  ws.on('message', (msg) => tcp.write(msg + '\n'));
-  ws.on('close', () => tcp.destroy());
-});
+wss.on('connection', (ws) => connectToElectrum(ws));
 
 server.listen(PORT, () => {
   console.log(`Nigiri UI running at http://localhost:${PORT}`);

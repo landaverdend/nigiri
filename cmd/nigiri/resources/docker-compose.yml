@@ -338,6 +338,7 @@ services:
     container_name: nigiri-ui
     depends_on:
       - chopsticks
+      - electrs
     environment:
       BITCOIN_RPC_HOST: bitcoin
       BITCOIN_RPC_PORT: "18443"
